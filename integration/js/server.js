@@ -15,6 +15,7 @@ const port = process.argv[2];
 const numberOfParticipant = parseInt(process.argv[3], 10);
 const interval = 1000;
 let createMeetingPromise = undefined;
+let numberAttendeeSessionReady = 0;
 
 createMeeting = async (createMeetingUrl) => {
   if (meetingMap[createMeetingUrl]) {
@@ -52,6 +53,14 @@ io.on('connection', function (socket) {
   let attendeeId = "";
   let testName = "";
   console.log('Connected');
+
+  socket.on('session_ready', ()  => {
+    numberAttendeeSessionReady += 1;
+    if (numberAttendeeSessionReady === numberOfParticipant) {
+      console.log(`All clients are ready`);
+      io.sockets.emit('all_clients_ready');
+    }
+  });
 
   socket.on('setup_test', async (createMeetingUrl, id) => {
     console.log(`Setting up test for attendee: ${id}`);
