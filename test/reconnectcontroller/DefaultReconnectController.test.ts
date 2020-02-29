@@ -1,20 +1,37 @@
-// Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 import * as chai from 'chai';
+import * as sinon from 'sinon';
 
 import FullJitterBackoff from '../../src/backoff/FullJitterBackoff';
+import PingPong from '../../src/pingpong/PingPong';
+import PingPongObserver from '../../src/pingpongobserver/PingPongObserver';
 import DefaultReconnectController from '../../src/reconnectcontroller/DefaultReconnectController';
 import TimeoutScheduler from '../../src/scheduler/TimeoutScheduler';
 
 describe('DefaultReconnectController', () => {
+  let pingPongStartCalled: boolean;
   let expect: Chai.ExpectStatic;
   let timeout: number;
   let defaultController = (): DefaultReconnectController => {
     return new DefaultReconnectController(50, new FullJitterBackoff(10, 0, 0));
   };
 
+  class TestPingPong implements PingPong {
+    addObserver(_observer: PingPongObserver): void {}
+    removeObserver(_observer: PingPongObserver): void {}
+    forEachObserver(_observerFunc: (_observer: PingPongObserver) => void): void {}
+    start(): void {
+      pingPongStartCalled = true;
+    }
+    stop(): void {}
+  }
+
   beforeEach(() => {
+    pingPongStartCalled = false;
+    const controller = defaultController();
+    controller.startedConnectionAttempt(false, new TestPingPong());
     expect = chai.expect;
     timeout = 50;
   });
@@ -84,7 +101,7 @@ describe('DefaultReconnectController', () => {
 
     it('stops calling the retry func if it is past the deadline', done => {
       const controller = defaultController();
-      controller.startedConnectionAttempt(true);
+      controller.startedConnectionAttempt(true, new TestPingPong());
       expect(controller.hasStartedConnectionAttempt()).to.equal(true);
       expect(controller.isFirstConnection()).to.equal(true);
       const tryAgain = (): void => {
@@ -99,8 +116,57 @@ describe('DefaultReconnectController', () => {
       };
       tryAgain();
       new TimeoutScheduler(2 * timeout).start(() => {});
-      controller.startedConnectionAttempt(false);
+      controller.startedConnectionAttempt(false, new TestPingPong());
       expect(controller.isFirstConnection()).to.equal(false);
     });
+
+    it('stops calling the retry func if it is past the deadline', done => {
+      const controller = defaultController();
+      controller.startedConnectionAttempt(true, new TestPingPong());
+      expect(controller.hasStartedConnectionAttempt()).to.equal(true);
+      expect(controller.isFirstConnection()).to.equal(true);
+      controller.didReceivePong(0, 0);
+      const tryAgain = (): void => {
+        controller.retryWithBackoff(
+          () => {},
+          () => {}
+        )
+          ? new TimeoutScheduler(10).start(() => {
+              tryAgain();
+            })
+          : done();
+      };
+      tryAgain();
+      new TimeoutScheduler(2 * timeout).start(() => {});
+      controller.startedConnectionAttempt(false, new TestPingPong());
+      expect(controller.isFirstConnection()).to.equal(false);
+    });
+  });
+
+  it('can start a PingPong', () => {
+    const controller = defaultController();
+    controller.startedConnectionAttempt(true, new TestPingPong());
+    expect(pingPongStartCalled).to.equal(true);
+  });
+
+  it('can receive a pong', () => {
+    const controller = defaultController();
+    const didReceivePongSpy = sinon.spy(controller, 'didReceivePong');
+    controller.didReceivePong(0, 0);
+    expect(didReceivePongSpy.called).to.equal(true);
+  });
+
+  it('can stop a PingPong', () => {
+    const controller = defaultController();
+    const pingPong = new TestPingPong();
+    const startSpy = sinon.spy(pingPong, 'start');
+    const stopSpy = sinon.spy(pingPong, 'stop');
+    controller.startedConnectionAttempt(true, pingPong);
+    expect(controller.hasStartedConnectionAttempt()).to.equal(true);
+    expect(controller.isFirstConnection()).to.equal(true);
+    controller.didReceivePong(0, 0);
+    expect(startSpy.called).to.equal(true);
+    controller.reset();
+    expect(stopSpy.called).to.equal(true);
   });
 });

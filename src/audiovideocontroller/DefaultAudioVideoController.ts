@@ -22,6 +22,7 @@ import MeetingSessionStatus from '../meetingsession/MeetingSessionStatus';
 import MeetingSessionStatusCode from '../meetingsession/MeetingSessionStatusCode';
 import MeetingSessionVideoAvailability from '../meetingsession/MeetingSessionVideoAvailability';
 import DefaultPingPong from '../pingpong/DefaultPingPong';
+import PingPong from '../pingpong/PingPong';
 import DefaultRealtimeController from '../realtimecontroller/DefaultRealtimeController';
 import RealtimeController from '../realtimecontroller/RealtimeController';
 import ReconnectController from '../reconnectcontroller/ReconnectController';
@@ -79,7 +80,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
   private _deviceController: DeviceControllerBasedMediaStreamBroker;
   private _reconnectController: ReconnectController;
   private _audioMixController: AudioMixController;
-
+  private pingPong: PingPong;
   private connectionHealthData = new ConnectionHealthData();
   private observerQueue: Set<AudioVideoObserver> = new Set<AudioVideoObserver>();
   private meetingSessionContext = new AudioVideoControllerState();
@@ -234,16 +235,17 @@ export default class DefaultAudioVideoController implements AudioVideoController
     this.meetingSessionContext.videosToReceive = new DefaultVideoStreamIdSet();
     this.meetingSessionContext.videosPaused = new DefaultVideoStreamIdSet();
     this.meetingSessionContext.statsCollector = new DefaultStatsCollector(this, this.logger);
+    this.pingPong = new DefaultPingPong(
+      this.meetingSessionContext.signalingClient,
+      DefaultAudioVideoController.PING_PONG_INTERVAL_MS,
+      this.logger
+    );
     this.meetingSessionContext.connectionMonitor = new SignalingAndMetricsConnectionMonitor(
       this,
       this._realtimeController,
       this._videoTileController,
       this.connectionHealthData,
-      new DefaultPingPong(
-        this.meetingSessionContext.signalingClient,
-        DefaultAudioVideoController.PING_PONG_INTERVAL_MS,
-        this.logger
-      ),
+      this.pingPong,
       this.meetingSessionContext.statsCollector
     );
     this.meetingSessionContext.reconnectController = this._reconnectController;
@@ -259,9 +261,9 @@ export default class DefaultAudioVideoController implements AudioVideoController
 
     if (this._reconnectController.hasStartedConnectionAttempt()) {
       // This does not reset the reconnect deadline, but declare it's not the first connection.
-      this._reconnectController.startedConnectionAttempt(false);
+      this._reconnectController.startedConnectionAttempt(false, this.pingPong);
     } else {
-      this._reconnectController.startedConnectionAttempt(true);
+      this._reconnectController.startedConnectionAttempt(true, this.pingPong);
     }
 
     try {
@@ -513,7 +515,7 @@ export default class DefaultAudioVideoController implements AudioVideoController
 
   private async actionReconnect(): Promise<void> {
     if (!this._reconnectController.hasStartedConnectionAttempt()) {
-      this._reconnectController.startedConnectionAttempt(false);
+      this._reconnectController.startedConnectionAttempt(false, this.pingPong);
       this.forEachObserver(observer => {
         Maybe.of(observer.audioVideoDidStartConnecting).map(f => f.bind(observer)(true));
       });
