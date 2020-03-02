@@ -141,6 +141,8 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
   // feature flags
   enableWebAudio = false;
 
+  screenShareTileId = 0;
+
   constructor() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).app = this;
@@ -1131,6 +1133,15 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
     if (!tileState.boundAttendeeId) {
       return;
     }
+
+    if (!tileState.boundVideoStream) {
+      return;
+    }
+
+    if (tileState.boundVideoElement) {
+      return;
+    }
+
     // const selfAttendeeId = this.meetingSession.configuration.credentials.attendeeId;
     const modality = new DefaultModality(tileState.boundAttendeeId);
     // if (modality.base() === selfAttendeeId && modality.hasModality(DefaultModality.MODALITY_CONTENT)) {
@@ -1165,10 +1176,14 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
 
     this.log(`binding video tile ${tileState.tileId} to ${videoElement.id}`);
     if (modality.hasModality(DefaultModality.MODALITY_CONTENT)) {
+      if (this.screenShareTileId) {
+        this.audioVideo.unbindVideoElement(this.screenShareTileId);
+        this.screenShareTileId = 0;
+      }
       videoElement = document.getElementById(`video-screen-share`) as HTMLVideoElement;
+      this.audioVideo.bindVideoElement(tileState.tileId, videoElement);
+      this.screenShareTileId = tileState.tileId;
     }
-
-    this.audioVideo.bindVideoElement(tileState.tileId, videoElement);
 
     // this.tileIndexToTileId[tileIndex] = tileState.tileId;
     // this.tileIdToTileIndex[tileState.tileId] = tileIndex;
