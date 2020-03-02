@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /* eslint-disable */
-var HtmlWebpackInlineSourcePlugin = require ('html-webpack-inline-source-plugin');
+var HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 /* eslint-enable */
 
-const app = process.env.npm_config_app || 'meeting';
+const app = process.env.npm_config_app || 'meetingV2';
 
 module.exports = env => {
   return {
@@ -38,26 +38,28 @@ module.exports = env => {
         },
         {
           test: /\.(scss)$/,
-          use: [{
-            loader: 'style-loader',
-            options: {
-              insert: 'head',
-            },
-          }, {
-            loader: 'css-loader',
-          }, {
-            loader: 'postcss-loader',
-            options: {
-              plugins: function () {
-                return [
-                  require('precss'),
-                  require('autoprefixer')
-                ];
+          use: [
+            {
+              loader: 'style-loader',
+              options: {
+                insert: 'head',
               },
             },
-          }, {
-            loader: 'sass-loader',
-          }]
+            {
+              loader: 'css-loader',
+            },
+            {
+              loader: 'postcss-loader',
+              options: {
+                plugins: function() {
+                  return [require('precss'), require('autoprefixer')];
+                },
+              },
+            },
+            {
+              loader: 'sass-loader',
+            },
+          ],
         },
         {
           test: /\.tsx?$/,
