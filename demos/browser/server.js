@@ -10,7 +10,7 @@ const AWS = require('aws-sdk');
 /* eslint-enable */
 
 let hostname = '127.0.0.1';
-let port = 8080;
+let port = 9000;
 let protocol = 'http';
 let options = {};
 
@@ -32,7 +32,7 @@ const log = message => {
   console.log(`${new Date().toISOString()} ${message}`);
 };
 
-const app = process.env.npm_config_app || 'meeting';
+const app = process.env.npm_config_app || 'meetingV2';
 
 const server = require(protocol).createServer(options, async (request, response) => {
   log(`${request.method} ${request.url} BEGIN`);
