@@ -1133,14 +1133,18 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
     }
     // const selfAttendeeId = this.meetingSession.configuration.credentials.attendeeId;
     const modality = new DefaultModality(tileState.boundAttendeeId);
-    // if (modality.base() === selfAttendeeId && modality.hasModality(DefaultModality.MODALITY_CONTENT)) {
-    //   // don't bind one's own content
-    //   return;
-    // }
+    if (modality.hasModality(DefaultModality.MODALITY_CONTENT)) {
+      const tileElement = document.getElementById(`tile-screenshare`) as HTMLDivElement;
+      const videoElement = document.getElementById(`video-screenshare`) as HTMLVideoElement;
+      tileElement.style.display = 'block';
+      this.log(`binding video tile ${tileState.tileId} to ${videoElement.id}`);
+      this.audioVideo.bindVideoElement(tileState.tileId, videoElement);
+      return;
+    }
     const tileIndex = tileState.localTile
       ? 16
       : this.tileOrganizer.acquireTileIndex(tileState.tileId);
-    // const tileElement = document.getElementById(`tile-${tileIndex}`) as HTMLDivElement;
+    const tileElement = document.getElementById(`tile-${tileIndex}`) as HTMLDivElement;
     let videoElement = document.getElementById(`video-${tileIndex}`) as HTMLVideoElement;
     const nameplateElement = document.getElementById(`nameplate-${tileIndex}`) as HTMLDivElement;
 
@@ -1164,14 +1168,10 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
     });
 
     this.log(`binding video tile ${tileState.tileId} to ${videoElement.id}`);
-    if (modality.hasModality(DefaultModality.MODALITY_CONTENT)) {
-      videoElement = document.getElementById(`video-screen-share`) as HTMLVideoElement;
-    }
-
     this.audioVideo.bindVideoElement(tileState.tileId, videoElement);
 
-    // this.tileIndexToTileId[tileIndex] = tileState.tileId;
-    // this.tileIdToTileIndex[tileState.tileId] = tileIndex;
+    this.tileIndexToTileId[tileIndex] = tileState.tileId;
+    this.tileIdToTileIndex[tileState.tileId] = tileIndex;
     // TODO: enforce roster names
     new TimeoutScheduler(2000).start(() => {
       const rosterName = this.roster[tileState.boundAttendeeId]
@@ -1181,13 +1181,13 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
         nameplateElement.innerHTML = rosterName;
       }
     });
-    // tileElement.style.display = 'block';
-    // this.layoutVideoTiles();
+    tileElement.style.display = 'block';
+    this.layoutVideoTiles();
   }
 
   videoTileWasRemoved(tileId: number): void {
     this.log(`video tile removed: ${tileId}`);
-    // this.hideTile(this.tileOrganizer.releaseTileIndex(tileId));
+    this.hideTile(this.tileOrganizer.releaseTileIndex(tileId));
   }
 
   videoAvailabilityDidChange(availability: MeetingSessionVideoAvailability): void {
