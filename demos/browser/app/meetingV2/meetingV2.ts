@@ -141,6 +141,8 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
   // feature flags
   enableWebAudio = false;
 
+  screenshareTileId = 0;
+
   constructor() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).app = this;
@@ -1138,7 +1140,12 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
       const videoElement = document.getElementById(`video-screenshare`) as HTMLVideoElement;
       tileElement.style.display = 'block';
       this.log(`binding video tile ${tileState.tileId} to ${videoElement.id}`);
+
+      if (this.screenshareTileId) {
+        this.audioVideo.unbindVideoElement(this.screenshareTileId);
+      }
       this.audioVideo.bindVideoElement(tileState.tileId, videoElement);
+      this.screenshareTileId = tileState.tileId;
       return;
     }
     const tileIndex = tileState.localTile
