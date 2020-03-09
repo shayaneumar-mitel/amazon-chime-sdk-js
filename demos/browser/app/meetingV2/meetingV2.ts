@@ -1129,10 +1129,20 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
   }
 
   videoTileDidUpdate(tileState: VideoTileState): void {
-    this.log(`video tile updated: ${JSON.stringify(tileState, null, '  ')}`);
+    // this.log(`video tile updated: ${JSON.stringify(tileState, null, '  ')}`);
+    this.log(`video tile updated: ${tileState.tileId}`);
     if (!tileState.boundAttendeeId) {
       return;
     }
+
+    if (!tileState.boundVideoStream) {
+      return;
+    }
+
+    if (tileState.boundVideoElement) {
+      return;
+    }
+
     // const selfAttendeeId = this.meetingSession.configuration.credentials.attendeeId;
     const modality = new DefaultModality(tileState.boundAttendeeId);
     if (modality.hasModality(DefaultModality.MODALITY_CONTENT)) {
@@ -1143,7 +1153,9 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
 
       if (this.screenshareTileId) {
         this.audioVideo.unbindVideoElement(this.screenshareTileId);
+        this.screenshareTileId = 0;
       }
+
       this.audioVideo.bindVideoElement(tileState.tileId, videoElement);
       this.screenshareTileId = tileState.tileId;
       return;
@@ -1193,7 +1205,7 @@ export class DemoMeetingApp implements AudioVideoObserver, DeviceChangeObserver 
   }
 
   videoTileWasRemoved(tileId: number): void {
-    this.log(`video tile removed: ${tileId}`);
+    this.log(`video tile updated removed: ${tileId}`);
     this.hideTile(this.tileOrganizer.releaseTileIndex(tileId));
   }
 
